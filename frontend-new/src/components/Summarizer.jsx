@@ -50,7 +50,7 @@ const Summarizer = ({ isDark }) => {
                     <span className="gradient-text">Advanced AI Intelligence</span>
                 </h1>
                 <p className={`text-base md:text-xl max-w-2xl mx-auto px-4 leading-relaxed font-medium ${isDark ? 'text-gray-400' : 'text-[#86868b]'}`}>
-                    Save hours of reading with our {isDark ? 'BART-powered' : 'Gemini-powered'} summarization engine.
+                    Save hours of reading with our advanced AI-powered summarization engine.
                     Get the core insights instantly.
                 </p>
             </motion.div>
