@@ -85,30 +85,48 @@ async def summarize_text(request: SummarizeRequest):
         except Exception as e:
             print(f"OpenAI Error: {e}")
 
-# 2. Try Gemini fallback (Multi-Key logic)
+# 2. Try Gemini fallback (Multi-Key logic with Auto-Model Detection)
     gemini_keys = [k.strip() for k in GEMINI_API_KEY.split(",")] if GEMINI_API_KEY else []
     
     for key in gemini_keys:
-        if not key or key == "your_gemini_api_key_here":
+        if not key or key in ["your_gemini_api_key_here", "key1"]:
             continue
             
         try:
-            print(f"Attempting Gemini with key starting with: {key[:5]}...")
+            print(f"🔄 Attempting Gemini with key: {key[:8]}...")
             genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
+            
+            # Auto-detect best model for THIS key
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            
+            if not available_models:
+                print(f"⚠️ No models available for key {key[:8]}. Skipping...")
+                continue
+                
+            # Priority: 1.5-flash (fastest), then 1.5-pro, then anything else
+            selected_model = available_models[0]
+            for m in available_models:
+                if "gemini-1.5-flash" in m:
+                    selected_model = m
+                    break
+                elif "gemini-1.5-pro" in m:
+                    selected_model = m
+                    
+            print(f"✅ Key {key[:8]} using model: {selected_model}")
+            model_engine = genai.GenerativeModel(selected_model)
+            response = model_engine.generate_content(prompt)
             
             return {
                 "summary_text": response.text,
-                "model_used": "Gemini 1.5 Flash (Success)"
+                "model_used": f"Gemini ({selected_model})"
             }
         except Exception as e:
-            print(f"Gemini Key {key[:5]} failed: {e}")
+            print(f"❌ Gemini Key {key[:8]} failed: {e}")
             continue # Try the next key
 
     # 3. Final Fallback
     return {
-        "summary_text": "AI Engine Error: All provided keys failed or reached their limits. Please check your API keys.",
+        "summary_text": "AI Engine Error: All 5 Gemini keys failed. Please check your Quota or Keys.",
         "model_used": "None"
     }
 
