@@ -13,38 +13,29 @@ app = FastAPI(title="AI Document Summarizer API")
 # Gemini Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 gemini_enabled = False
+gemini_error = "Key not found in environment"
 
-# Fallback: using the key provided by the user in chat
-if not GEMINI_API_KEY or GEMINI_API_KEY == "your_gemini_api_key_here":
-    GEMINI_API_KEY = "AIzaSyDY6fPXhyqLq2q8wgDWIY0pgpqfE9HALPQ"
-
-# Activate if a valid key is found
 if GEMINI_API_KEY and GEMINI_API_KEY not in ["your_gemini_api_key_here", ""]:
     try:
+        print(f"Configuring Gemini with key starting with: {GEMINI_API_KEY[:5]}...")
         genai.configure(api_key=GEMINI_API_KEY)
         
         # List models to see what's available for this key
-        print("Fetching available Gemini models...")
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        print(f"Available models: {available_models}")
         
         if available_models:
-            # Pick the first available model, preferring flash or pro
-            selected_model = available_models[0]
-            for m in available_models:
-                if 'flash' in m:
-                    selected_model = m
-                    break
-            
+            selected_model = "gemini-1.5-flash" # Standard model
             gemini_model = genai.GenerativeModel(selected_model)
             gemini_enabled = True
+            gemini_error = None
             print(f"SUCCESS: Gemini API configured with model: {selected_model}")
         else:
-            print("No models supporting generateContent found for this key.")
-            gemini_enabled = False
+            gemini_error = "No supported models found for this key"
+            print(gemini_error)
             
     except Exception as e:
-        print(f"Error configuring Gemini: {e}")
+        gemini_error = f"Gemini Config Error: {str(e)}"
+        print(gemini_error)
         gemini_enabled = False
 
 # Enable CORS for React frontend
@@ -137,9 +128,9 @@ async def summarize_text(request: SummarizeRequest):
             }
         else:
             return {
-                "summary_text": "Model loading failed. This is a placeholder summary. " + request.text[:100] + "...",
+                "summary_text": f"AI Engine Error: {gemini_error or 'Unknown error'}. Please check your API key in Render settings.",
                 "original_length": len(request.text),
-                "summary_length": 50,
+                "summary_length": 0,
                 "model_used": "None (Fallback)"
             }
     except Exception as e:
