@@ -9,3 +9,4 @@ python-dotenv
 sentencepiece
 sacremoses
 google-generativeai
+openai
