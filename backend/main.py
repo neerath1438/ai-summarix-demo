@@ -23,18 +23,6 @@ if OPENAI_API_KEY:
     except Exception as e:
         print(f"OpenAI Config Error: {e}")
 
-gemini_enabled = False
-if GEMINI_API_KEY and GEMINI_API_KEY not in ["your_gemini_api_key_here", ""]:
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        if available_models:
-            gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-            gemini_enabled = True
-            print("SUCCESS: Gemini API configured!")
-    except Exception as e:
-        print(f"Gemini Config Error: {e}")
-
 # Enable CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
@@ -68,24 +56,7 @@ async def summarize_text(request: SummarizeRequest):
     User Input: {request.text}
     Instructions: Provide a concise summary. Include word count at the end."""
 
-    # 1. Try OpenAI (GPT-4o-mini) FIRST if key is provided
-    if openai_client:
-        try:
-            print("Using OpenAI GPT-4o-mini...")
-            response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300
-            )
-            summary_text = response.choices[0].message.content
-            return {
-                "summary_text": summary_text,
-                "model_used": "GPT-4o-mini"
-            }
-        except Exception as e:
-            print(f"OpenAI Error: {e}")
-
-# 2. Try Gemini fallback (Multi-Key logic with Auto-Model Detection)
+    # 1. Try Gemini fallback (Multi-Key logic with Auto-Model Detection) FIRST for cost savings
     gemini_keys = [k.strip() for k in GEMINI_API_KEY.split(",")] if GEMINI_API_KEY else []
     
     for key in gemini_keys:
@@ -124,9 +95,26 @@ async def summarize_text(request: SummarizeRequest):
             print(f"❌ Gemini Key {key[:8]} failed: {e}")
             continue # Try the next key
 
+    # 2. Try OpenAI (GPT-4o-mini) as FINAL FALLBACK if it costs money
+    if openai_client:
+        try:
+            print("Using OpenAI GPT-4o-mini as final fallback...")
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300
+            )
+            summary_text = response.choices[0].message.content
+            return {
+                "summary_text": summary_text,
+                "model_used": "GPT-4o-mini (Fallback)"
+            }
+        except Exception as e:
+            print(f"OpenAI Error: {e}")
+
     # 3. Final Fallback
     return {
-        "summary_text": "AI Engine Error: All 5 Gemini keys failed. Please check your Quota or Keys.",
+        "summary_text": "AI Engine Error: All Gemini and OpenAI keys failed. Please check your Quota or Keys.",
         "model_used": "None"
     }
 
