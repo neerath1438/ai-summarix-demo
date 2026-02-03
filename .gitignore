@@ -1,0 +1,14 @@
+# Common ignores
+node_modules/
+dist/
+build/
+.env
+.env.local
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+workspace/
+brain/
+*.log
+.gemini/

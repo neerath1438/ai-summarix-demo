@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+transformers
+torch
+pydantic
+python-multipart
+mangum
+python-dotenv
+sentencepiece
+sacremoses
+google-generativeai
