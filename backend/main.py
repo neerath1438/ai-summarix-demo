@@ -85,21 +85,30 @@ async def summarize_text(request: SummarizeRequest):
         except Exception as e:
             print(f"OpenAI Error: {e}")
 
-    # 2. Try Gemini fallback
-    if gemini_enabled:
+# 2. Try Gemini fallback (Multi-Key logic)
+    gemini_keys = [k.strip() for k in GEMINI_API_KEY.split(",")] if GEMINI_API_KEY else []
+    
+    for key in gemini_keys:
+        if not key or key == "your_gemini_api_key_here":
+            continue
+            
         try:
-            print("Using Gemini fallback...")
-            response = gemini_model.generate_content(prompt)
+            print(f"Attempting Gemini with key starting with: {key[:5]}...")
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(prompt)
+            
             return {
                 "summary_text": response.text,
-                "model_used": "Gemini 1.5 Flash"
+                "model_used": "Gemini 1.5 Flash (Success)"
             }
         except Exception as e:
-            print(f"Gemini Error: {e}")
+            print(f"Gemini Key {key[:5]} failed: {e}")
+            continue # Try the next key
 
     # 3. Final Fallback
     return {
-        "summary_text": "AI Engine Error. Please check your API keys (OpenAI/Gemini) in Render settings.",
+        "summary_text": "AI Engine Error: All provided keys failed or reached their limits. Please check your API keys.",
         "model_used": "None"
     }
 
